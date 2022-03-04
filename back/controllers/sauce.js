@@ -93,3 +93,40 @@ exports.readSauce = (req, res, next) => {
 exports.readAllSauces = (req, res, next) => {
     modelSauce.find().then((sauces) => res.status(200).json(sauces))
 }
+
+exports.likeDislike = (req, res, next) => {
+  const like = req.body.like;
+  
+  // dislike
+  if (like == -1)
+    modelSauce.updateOne( { _id: req.params.id }, { $push: {usersDisliked: req.body.userId}, $inc: { dislikes: +1 }})
+      .then(() => {
+        res.status(200).json({ message: 'Dislike added successfully.' });
+      })
+      .catch((err) => res.status(400).json({ err }));
+
+  else {
+    // like
+    if (like == 1) {
+      modelSauce.updateOne( { _id: req.params.id }, { $push: {usersDisliked: req.body.userId}, $inc: { likes: +1 }})
+      .then(() => {
+        res.status(200).json({ message: 'Like added successfully.' });
+      })
+      .catch((err) => res.status(400).json({ err }));
+    } else {
+      // delete dislike / like
+      // find the sauce in our db
+      modelSauce.findOne({ _id: req.params.id })
+        .then((sauce) => {
+          let likeType = sauce.usersLiked.includes(req.body.userId) ? { $pull: { usersLiked: req.body.userId }, $inc: { likes: -1 } } : {
+            $pull: { usersDisliked: req.body.userId },
+            $inc: { dislikes: -1 },
+          }
+          modelSauce.updateOne( {_id: req.params.id}, likeType).then(() => {
+            let msg = sauce.usersLiked.includes(req.body.userId) ? 'Like deleted successfully' : 'Dislike deleted successfully';
+            res.status(200).json({message: msg})
+            }).catch((err) => res.status(400).json({ err }));
+        })
+    }
+  }
+}
